@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: nbp_postgres_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=nbp_user
+      - POSTGRES_PASSWORD=nbp_password
+      - POSTGRES_DB=nbp_rates_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nbp_user -d nbp_rates_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    ports:
+      - "8000:8000"
+    build: ./backend
+    container_name: nbp_fastapi_backend
+    volumes:
+      - ./backend:/app
+    environment:
+      - POSTGRES_USER=nbp_user
+      - POSTGRES_PASSWORD=nbp_password
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=nbp_rates_db
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    container_name: nbp_angular_frontend
+    ports:
+      - "4200:80" 
+    depends_on:
+      - backend 
+volumes:
+  postgres_data:
